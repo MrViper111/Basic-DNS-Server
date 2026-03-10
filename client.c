@@ -1,3 +1,4 @@
+#include <_stdio.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -10,6 +11,11 @@
 #define PORT 8080
 #define BUFFER_SIZE 1024
 #define CACHE_PATH "cache.txt"
+
+int is_valid_ip(char *string) {
+    struct in_addr addr;
+    return inet_pton(AF_INET, string, &addr) == 1;
+}
 
 int main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -36,7 +42,7 @@ int main() {
 
         if (strcmp(command, "clearcache") == 0) {
             wipe(CACHE_PATH);
-            printf("Cleared existing cache.\n");
+            printf("CLEARED EXISTING CACHE.\n");
 
             continue;
         }
@@ -53,7 +59,18 @@ int main() {
         
         printf("%s\n", buffer);
 
-        // add cache later
+        if (strncmp(command, "get ", 4) == 0 && is_valid_ip(buffer)) {
+            if (get_value(CACHE_PATH, command + 4) != 0) {
+                printf("DOMAIN ALREADY CACHED, USING EXISTING DATA.\n");
+                continue;
+            }
+
+            char new_data[100];
+            snprintf(new_data, sizeof(new_data), "%s:%s", command + 4, buffer);
+            
+            write_to(CACHE_PATH, new_data);
+            printf("NEW RECORD ADDED TO CACHE.\n");
+        }
     }
     
     close(sock);
