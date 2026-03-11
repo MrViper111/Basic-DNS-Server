@@ -1,4 +1,3 @@
-#include <_stdio.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -19,6 +18,11 @@ int is_valid_ip(char *string) {
 
 int main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sock < 0) {
+        perror("Socket connection failed");
+        return 1;
+    }
     
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -26,7 +30,7 @@ int main() {
     inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
     
     connect(sock, (struct sockaddr*) &server_addr, sizeof(server_addr));
-    printf("Connected to server\n");
+    printf("--- CONNECTED TO SERVER ---\nMalformed inputs will be handled anyway.\n");
     
     char buffer[BUFFER_SIZE];
     char command[BUFFER_SIZE];
@@ -60,14 +64,18 @@ int main() {
         printf("%s\n", buffer);
 
         if (strncmp(command, "get ", 4) == 0 && is_valid_ip(buffer)) {
-            if (get_value(CACHE_PATH, command + 4) != 0) {
+            uint32_t cached_ip = get_value(CACHE_PATH, command + 4);
+
+            if (cached_ip != 0) {
+                struct in_addr addr;
+                addr.s_addr = cached_ip;
                 printf("DOMAIN ALREADY CACHED, USING EXISTING DATA.\n");
                 continue;
             }
 
             char new_data[100];
             snprintf(new_data, sizeof(new_data), "%s:%s", command + 4, buffer);
-            
+
             write_to(CACHE_PATH, new_data);
             printf("NEW RECORD ADDED TO CACHE.\n");
         }
